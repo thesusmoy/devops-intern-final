@@ -1,0 +1,66 @@
+# Grafana Loki Setup and Usage
+
+## 1. Setup Loki and Promtail using Docker Compose
+
+Create a `docker-compose.yml` file (not included in this repo, but here is the content for reference):
+
+```yaml
+version: "3"
+
+networks:
+  loki:
+
+services:
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - loki
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - /var/log:/var/log
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - loki
+```
+
+Run with:
+```bash
+docker-compose up -d
+```
+
+## 2. Configure Log Forwarding
+
+For Docker containers, you can use the Loki Docker driver.
+Install the plugin:
+```bash
+docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+```
+
+Run your container with the Loki log driver:
+```bash
+docker run --log-driver=loki \
+    --log-opt loki-url="http://localhost:3100/loki/api/v1/push" \
+    --log-opt loki-batch-size=400 \
+    devops-intern-hello
+```
+
+## 3. View Logs in Grafana
+
+1. Open Grafana at `http://localhost:3000`.
+2. Login (default admin/admin).
+3. Add Data Source -> Loki -> URL `http://loki:3100`.
+4. Go to Explore.
+5. Select Loki datasource.
+6. Query: `{container_name="devops-intern-hello"}`.
